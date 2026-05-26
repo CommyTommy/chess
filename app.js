@@ -16,7 +16,17 @@ for (let i = 0; i < 8; i++) {
         const square = document.createElement('div');
         square.classList.add('square');
         square.classList.add((i + j) % 2 === 0 ? 'light' : 'dark');
+        square.dataset.row = i;
+        square.dataset.col = j;
+        square.addEventListener('click', handleSquareClick);
         square.textContent = initialBoard[i][j] || '';
         element.appendChild(square);
     }
+}
+
+function handleSquareClick(event) {
+    const square = event.currentTarget;
+    const row = parseInt(square.dataset.row);
+    const col = parseInt(square.dataset.col);
+    console.log(`Square clicked: row ${row}, col ${col}`);
 }
