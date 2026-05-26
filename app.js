@@ -93,7 +93,11 @@ document.addEventListener('click', function(event) {
 });
 
 function addPossibleMoves(targetSquare) {
-    if (targetSquare) targetSquare.classList.add('possible-move');    
+    if (!targetSquare) return;
+    
+    if(isAlly(selectedSquare.textContent, targetSquare.textContent) === false) {
+        if (targetSquare) targetSquare.classList.add('possible-move');
+    }
 }
 
 function showRookMoves(row, col) {
@@ -242,4 +246,12 @@ function showKnightMoves(row, col) {
             addPossibleMoves(targetSquare);
         }
     });
+}
+
+function isAlly(currentPiece, targetPiece) {
+    if (targetPiece === '') return false;
+
+    bothWhite = currentPiece === currentPiece.toUpperCase() && targetPiece === targetPiece.toUpperCase();
+    bothBlack = currentPiece === currentPiece.toLowerCase() && targetPiece === targetPiece.toLowerCase();
+    return bothWhite || bothBlack;
 }
