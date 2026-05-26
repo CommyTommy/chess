@@ -1,5 +1,10 @@
 // To show that no square is currently selected by default
 let selectedSquare = null;
+
+// For Turn order
+let currentTurn = 'white';
+let playerColor = null;
+
 // Initialize the chess board
 const initialBoard = [
     ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -30,46 +35,101 @@ for (let i = 0; i < 8; i++) {
     }
 }
 
+function selectPlayerColor(isWhite) {
+    document.getElementById('start-menu').style.display = 'none';
+    document.getElementById('chessboard').style.display = 'grid';
+    if (isWhite) {
+        playerColor = 'white';
+        console.log("You are playing as white.");
+    } else {
+        playerColor = 'black';
+        console.log("You are playing as black.");
+    }
+}
+
 // Reads when a square is clicked and then set the selected square and add the 'selected' class
 function handleSquareClick(event) {
+    const square = event.currentTarget;
+    const row = parseInt(square.dataset.row); 
+    const col = parseInt(square.dataset.col);
+
+    if (currentTurn === 'white') {
+        console.log("White's turn!");
+    } else if (currentTurn !== 'white') {
+        console.log("Black's turn!");
+    }
+
+    // Move execution
+    if (selectedSquare !== null && square.classList.contains('possible-move')) {
+        const piece = selectedSquare.textContent;
+        const pieceColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
+        if (pieceColor !== currentTurn) {
+            console.log("You cannot move your opponent's piece!");
+            return;
+        } 
+
+        const oldRow = parseInt(selectedSquare.dataset.row);
+        const oldCol = parseInt(selectedSquare.dataset.col);
+        const movingPiece = selectedSquare.textContent;
+
+        // Updates the board array (memory)
+        initialBoard[row][col] = movingPiece;
+        initialBoard[oldRow][oldCol] = null;
+
+        // Updates Piece Icon
+        square.textContent = movingPiece;
+        selectedSquare.textContent = '';
+
+        // Cleaning up highlights
+        selectedSquare.classList.remove('selected');
+        selectedSquare = null;
+        document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
+        
+        console.log("Move executed successfully!");
+        if (currentTurn === 'white') {
+            currentTurn = 'black';
+        } else {
+            currentTurn = 'white';
+        }
+        return; // Stops the function completely so we don't accidentally re-select this square!
+    }
+
+    // If Selected Square is not a possible move
     const oldMoves = document.querySelectorAll('.possible-move');
 
-    // If a new square is selected removes the previously selected square 'selected' class
     if(selectedSquare != null) {
         selectedSquare.classList.remove('selected');
     }
 
-    // Removes any highlighted 'possible moves' classes
     oldMoves.forEach(square => {
         square.classList.remove('possible-move');
     });
 
-    selectedSquare = event.currentTarget;
+    selectedSquare = square;
     selectedSquare.classList.add('selected');
-    const row = parseInt(selectedSquare.dataset.row);
-    const col = parseInt(selectedSquare.dataset.col);
     console.log(`Square clicked: row ${row}, col ${col}`);
 
-    piece = selectedSquare.textContent;
-    if (piece !== '') {
-        console.log(`You selected a piece: ${piece}. Calculating moves...`);
-        if (piece === 'r' || piece === 'R') {
-            showRookMoves(row, col);
-        } else if (piece === 'n' || piece === 'N') {
-            showKnightMoves(row, col);
-        } else if (piece === 'b' || piece === 'B') {
-            showBishopMoves(row, col);
-        } else if (piece === 'q' || piece === 'Q') {
-            showQueenMoves(row, col);
-        } else if (piece === 'k' || piece === 'K') {
-            showKingMoves(row, col);
-        } else if (piece === 'P') {
-            showWPawnMoves(row, col);
-        } else if (piece === 'p') {
-            showBPawnMoves(row, col);
-        } else {
+    const piece = selectedSquare.textContent;
+    if (piece === '') {
         console.log("You selected an empty square.");
-        }
+        return;
+    }
+
+    console.log(`You selected a piece: ${piece}. Calculating moves...`);
+    if (piece === 'r' || piece === 'R') {
+        showRookMoves(row, col);
+    } else if (piece === 'n' || piece === 'N') {
+        showKnightMoves(row, col);
+    } else if (piece === 'b' || piece === 'B') {
+        showBishopMoves(row, col);
+    } else if (piece === 'q' || piece === 'Q') {
+        showQueenMoves(row, col);
+    } else if (piece === 'k' || piece === 'K') {
+        showKingMoves(row, col);
+    } else if (piece === 'P') {
+        showWPawnMoves(row, col);
+    } else if (piece === 'p') {
+        showBPawnMoves(row, col);
     }
 }
 
@@ -92,14 +152,23 @@ document.addEventListener('click', function(event) {
     }
 });
 
+// Helper functions to help possible moves for pieces
 function addPossibleMoves(targetSquare) {
     if (!targetSquare) return;
-    
+
     if(isAlly(selectedSquare.textContent, targetSquare.textContent) === false) {
         if (targetSquare) targetSquare.classList.add('possible-move');
     }
 }
+function isAlly(currentPiece, targetPiece) {
+    if (targetPiece === '') return false;
 
+    const bothWhite = currentPiece === currentPiece.toUpperCase() && targetPiece === targetPiece.toUpperCase();
+    const bothBlack = currentPiece === currentPiece.toLowerCase() && targetPiece === targetPiece.toLowerCase();
+    return bothWhite || bothBlack;
+}
+
+// Potential Moves for Pieces
 function showRookMoves(row, col) {
     // 1. Scan Right
     for (let c = col + 1; c < 8; c++) {
@@ -246,12 +315,4 @@ function showKnightMoves(row, col) {
             addPossibleMoves(targetSquare);
         }
     });
-}
-
-function isAlly(currentPiece, targetPiece) {
-    if (targetPiece === '') return false;
-
-    bothWhite = currentPiece === currentPiece.toUpperCase() && targetPiece === targetPiece.toUpperCase();
-    bothBlack = currentPiece === currentPiece.toLowerCase() && targetPiece === targetPiece.toLowerCase();
-    return bothWhite || bothBlack;
 }

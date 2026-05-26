@@ -4,10 +4,77 @@ body {
     align-items: center;
     min-height: 100vh;
     background-color: rgb(10, 25, 36);
+    font-family: "Verdana", sans-serif;
+    margin: 0;
+}
+
+#start-menu {
+    text-align: center;
+    background: rgba(16, 45, 65, 0.4);
+    padding: 40px 60px;
+    border-radius: 12px;
+    border: 2px solid rgb(158, 119, 20);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px); /* Subtle glass blur effect */
+}
+
+/* Style the Main Title */
+#start-menu h1 {
+    color: #fff;
+    font-size: 2rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px rgba(158, 119, 20, 0.5);
+}
+
+/* Style the Subtitle */
+#start-menu p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    margin-bottom: 30px;
+}
+
+/* The Core Button Style */
+#start-menu button {
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 12px 35px;
+    margin: 0 15px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease; /* Makes changes look smooth instead of snappy! */
+}
+
+/* White Button Unique Identity */
+#white-button {
+    background-color: #e0e6ed;
+    color: #102d41;
+}
+
+#white-button:hover {
+    background-color: #ffffff;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    transform: translateY(-3px); /* Makes button pop up slightly */
+}
+
+/* Black Button Unique Identity */
+#black-button {
+    background-color: #051016;
+    color: #e0e6ed;
+    border-color: rgba(158, 119, 20, 0.6) !important;
+}
+
+#black-button:hover {
+    background-color: #102d41;
+    border-color: rgb(158, 119, 20) !important;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+    transform: translateY(-3px);
 }
 
 #chessboard {
-    display: grid;
+    display: none;
     grid-template-columns: repeat(8, 60px);
     grid-template-rows: repeat(8, 60px);
 
