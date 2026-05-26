@@ -35,3 +35,14 @@ body {
 .dark {
     background-color: rgba(10, 25, 36, 0.4);  
 }
+
+.selected {
+    background-color: rgba(158, 119, 20, 0.4) !important; 
+    box-shadow: inset 0 0 15px rgba(158, 119, 20, 0.6);
+}
+
+.possible-move {
+    background-color: rgba(0, 212, 255, 0.15) !important; /* Soft futuristic cyan */
+    outline: 2px dashed rgba(0, 212, 255, 0.4);            /* Subdued dashed border */
+    outline-offset: -4px;                                  /* Pushes the dash inside the square */
+}
