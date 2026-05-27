@@ -85,12 +85,26 @@ function handleSquareClick(event) {
         selectedSquare = null;
         document.querySelectorAll('.possible-move').forEach(sq => sq.classList.remove('possible-move'));
         
+        // Pawn Promotion 
+        if(movingPiece === 'P' && row === 0) {
+            square.textContent = 'Q';
+            initialBoard[row][col] = 'Q';
+            console.log("White Pawn got a Promotion")
+        } else if (movingPiece === 'p' && row === 7) {
+            square.textContent = 'q';
+            initialBoard[row][col] = 'q';
+            console.log("Black Pawn got a Promotion")
+        }
+
         console.log("Move executed successfully!");
         if (currentTurn === 'white') {
             currentTurn = 'black';
         } else {
             currentTurn = 'white';
         }
+
+        updateCheckHighlight();
+        
         return; // Stops the function completely so we don't accidentally re-select this square!
     }
 
@@ -116,21 +130,30 @@ function handleSquareClick(event) {
     }
 
     console.log(`You selected a piece: ${piece}. Calculating moves...`);
+
+    let rawMoves = [];
+
     if (piece === 'r' || piece === 'R') {
-        showRookMoves(row, col);
+        rawMoves = showRookMoves(row, col, false);
     } else if (piece === 'n' || piece === 'N') {
-        showKnightMoves(row, col);
+        rawMoves = showKnightMoves(row, col, false);
     } else if (piece === 'b' || piece === 'B') {
-        showBishopMoves(row, col);
+        rawMoves = showBishopMoves(row, col, false);
     } else if (piece === 'q' || piece === 'Q') {
-        showQueenMoves(row, col);
+        rawMoves = showQueenMoves(row, col, false);
     } else if (piece === 'k' || piece === 'K') {
-        showKingMoves(row, col);
+        rawMoves = showKingMoves(row, col, false);
     } else if (piece === 'P') {
-        showWPawnMoves(row, col);
+        rawMoves = showWPawnMoves(row, col, false);
     } else if (piece === 'p') {
-        showBPawnMoves(row, col);
+        rawMoves = showBPawnMoves(row, col, false);
     }
+
+    const safe = filterLegalMoves(rawMoves, currentTurn);
+    safe.forEach(move => {
+        const safe = document.querySelector(`[data-row="${move.toRow}"][data-col="${move.toCol}"]`);
+        if(safe) safe.classList.add('possible-move');
+    });
 }
 
 // If the user clicks outside of the chess board itll deselect the currently selected square
@@ -153,13 +176,31 @@ document.addEventListener('click', function(event) {
 });
 
 // Helper functions to help possible moves for pieces
-function addPossibleMoves(targetSquare) {
-    if (!targetSquare) return;
+function addPossibleMoves(startRow, startCol, targetSquare, highlightVisual = false) {
+    if (!targetSquare) return null;
 
-    if(isAlly(selectedSquare.textContent, targetSquare.textContent) === false) {
-        if (targetSquare) targetSquare.classList.add('possible-move');
+    const currentPiece = initialBoard[startRow][startCol];
+    const targetRow = parseInt(targetSquare.dataset.row);
+    const targetCol = parseInt(targetSquare.dataset.col);
+
+    if (isAlly(currentPiece, targetSquare.textContent) === false) {
+        // Show Visual
+        if (highlightVisual) {
+            targetSquare.classList.add('possible-move');
+        }
+
+        // Always return the raw data object of the move!
+        return {
+            piece: currentPiece,
+            fromRow: startRow,
+            fromCol: startCol,
+            toRow: targetRow,
+            toCol: targetCol
+        };
     }
+    return null;
 }
+
 function isAlly(currentPiece, targetPiece) {
     if (targetPiece === '') return false;
 
@@ -169,86 +210,183 @@ function isAlly(currentPiece, targetPiece) {
 }
 
 // Potential Moves for Pieces
-function showRookMoves(row, col) {
+function showRookMoves(row, col, highlightVisual = false) {
+    let moves = [];
+
     // 1. Scan Right
     for (let c = col + 1; c < 8; c++) {
-        addPossibleMoves(document.querySelector(`[data-row="${row}"][data-col="${c}"]`));
+        const targetSquare = document.querySelector(`[data-row="${row}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[row][c] !== null) break; 
     }
 
     // 2. Scan Left
     for (let c = col - 1; c >= 0; c--) {
-        addPossibleMoves(document.querySelector(`[data-row="${row}"][data-col="${c}"]`));
+        const targetSquare = document.querySelector(`[data-row="${row}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[row][c] !== null) break; 
     }
 
     // 3. Scan Down
     for (let r = row + 1; r < 8; r++) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${col}"]`));
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${col}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[r][col] !== null) break; 
     }
 
     // 4. Scan Up
+    
     for (let r = row - 1; r >= 0; r--) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${col}"]`));
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${col}"]`);        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[r][col] !== null) break; 
     }
     
+    return moves;
 }
 
-function showBishopMoves(row, col) {
+function showBishopMoves(row, col, highlightVisual = false) {
+    let moves = [];
     // 1. Scan Down-Right
     for (let r = row + 1, c = col + 1; c < 8 && r < 8; c++, r++) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${c}"]`));
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[r][c] !== null) break; 
     }
 
     // 2. Scan Down-Left
     for (let r = row + 1, c = col - 1; c >= 0 && r < 8; c--, r++) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${c}"]`));
-        if (initialBoard[r][c] !== null) break; 
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
+        if (initialBoard[r][c] !== null) break;  
     }
 
     // 3. Scan Up-Right
     for (let r = row - 1, c = col + 1; c < 8 && r >= 0; c++, r--) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${c}"]`));
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[r][c] !== null) break; 
         
     }
 
     // 4. Scan Up-Left
     for (let r = row - 1, c = col - 1; c >= 0 && r >= 0; c--, r--) {
-        addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${c}"]`));
+        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }
+        
         if (initialBoard[r][c] !== null) break; 
     }
+
+    return moves;
 }
 
-function showQueenMoves(row, col) {
-    showBishopMoves(row, col);
-    showRookMoves(row, col);
+function showQueenMoves(row, col, highlightVisual = false) {
+    const bishopMoves = showBishopMoves(row, col, highlightVisual);
+    const rookMoves = showRookMoves(row, col, highlightVisual);
+    return bishopMoves.concat(rookMoves);
 }
 
-function showKingMoves(row, col) {
+function showKingMoves(row, col, highlightVisual = false) {
+    let moves = [];
+
     for (let r = row - 1; r <= row + 1; r++) {
         for (let c = col - 1; c <= col + 1; c++) {
             if (r >= 0 && r < 8 && c >= 0 && c < 8 && (r !== row || c !== col)) {
-                addPossibleMoves(document.querySelector(`[data-row="${r}"][data-col="${c}"]`));
+                const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        
+                // Pass our new parameters into the helper
+                const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                
+                if (moveData) {
+                    moves.push(moveData); // Save the data object!
+                }
             }
         }
     }
+
+    return moves;
 }
 
-function showWPawnMoves(row, col) {
+function showWPawnMoves(row, col, highlightVisual = false) {
+    let moves = [];
+
     // Rule 1 & 2: Moving 1 square forward (must be empty!)
     const oneStepRow = row - 1;
     if (oneStepRow >= 0 && initialBoard[oneStepRow][col] === null) {
-        addPossibleMoves(document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`));
+        const targetSquare = document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`);
+
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }        
+
         // Rule 1 Continued: Double step from starting row (row 6)
         // We only check this if the first step was also empty!
         const twoStepRow = row - 2;
         if (row === 6 && initialBoard[twoStepRow][col] === null) {
-            addPossibleMoves(document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`));
+            const targetSquare = document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`);
+            // Pass our new parameters into the helper
+            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+            
+            if (moveData) {
+                moves.push(moveData); // Save the data object!
+            }  
         }
     }
 
@@ -262,23 +400,48 @@ function showWPawnMoves(row, col) {
             const pieceOnSquare = initialBoard[targetRow][targetCol];
             // If there is a piece here, and it's lowercase (Black's piece), we can capture it!
             if (pieceOnSquare !== null && pieceOnSquare === pieceOnSquare.toLowerCase()) {
-                addPossibleMoves(document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`));
+                const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
+
+                // Pass our new parameters into the helper
+                const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                
+                if (moveData) {
+                    moves.push(moveData); // Save the data object!
+                }  
             }
         }
     });
+
+    return moves;
 }
 
-function showBPawnMoves(row, col) {
+function showBPawnMoves(row, col, highlightVisual = false) {
+
+    let moves = [];
+
     // Rule 1 & 2: Moving 1 square forward (must be empty!)
     const oneStepRow = row + 1;
     if (oneStepRow >= 0 && initialBoard[oneStepRow][col] === null) {
-        addPossibleMoves(document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`));
+        const targetSquare = document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`);
+
+        // Pass our new parameters into the helper
+        const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+        
+        if (moveData) {
+            moves.push(moveData); // Save the data object!
+        }   
         
         // Rule 1 Continued: Double step from starting row (row 6)
         // We only check this if the first step was also empty!
         const twoStepRow = row + 2;
         if (row === 1 && initialBoard[twoStepRow][col] === null) {
-            addPossibleMoves(document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`));
+            const targetSquare = document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`);
+            // Pass our new parameters into the helper
+            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+            
+            if (moveData) {
+                moves.push(moveData); // Save the data object!
+            }  
         }
     }
 
@@ -292,27 +455,177 @@ function showBPawnMoves(row, col) {
             const pieceOnSquare = initialBoard[targetRow][targetCol];
             // If there is a piece here, and it's lowercase (Black's piece), we can capture it!
             if (pieceOnSquare !== null && pieceOnSquare === pieceOnSquare.toUpperCase()) {
-                addPossibleMoves(document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`));
+                const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
+
+                // Pass our new parameters into the helper
+                const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                
+                if (moveData) {
+                    moves.push(moveData); // Save the data object!
+                }  
             }
         }
     });
+
+    return moves;
 }
 
-function showKnightMoves(row, col) {
+function showKnightMoves(row, col, highlightVisual = false) {
+
+    let moves = [];
+
     // The 8 unique [rowOffset, colOffset] combinations a Knight can make
-    const moves = [
+    const knightPatterns = [
         [-2, 1], [-2, -1], [2, 1], [2, -1],
         [-1, 2], [1, 2], [-1, -2], [1, -2]
     ];
 
-    moves.forEach(move => {
+    knightPatterns.forEach(move => {
         const targetRow = row + move[0];
         const targetCol = col + move[1];
 
         // CRITICAL CHECK: Make sure the Knight isn't trying to leap off the 8x8 grid!
         if (targetRow >= 0 && targetRow < 8 && targetCol >= 0 && targetCol < 8) {
             const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
-            addPossibleMoves(targetSquare);
+
+            // Pass our new parameters into the helper
+            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+            
+            if (moveData) {
+                moves.push(moveData); // Save the data object!
+            }   
         }
     });
+
+    return moves;
+}
+
+function getAllValidMoves(color, highlightVisual = false) {
+    let allMoves = [];
+
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = initialBoard[r][c];
+            if (piece === null) continue;
+
+            const pieceColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
+
+            if (pieceColor === color) {
+                if (piece === 'r' || piece === 'R') {
+                    allMoves = allMoves.concat(showRookMoves(r, c, highlightVisual));
+                } else if (piece === 'n' || piece === 'N') {
+                    allMoves = allMoves.concat(showKnightMoves(r, c, highlightVisual));
+                } else if (piece === 'b' || piece === 'B') {
+                    allMoves = allMoves.concat(showBishopMoves(r, c, highlightVisual));
+                } else if (piece === 'q' || piece === 'Q') {
+                    allMoves = allMoves.concat(showQueenMoves(r, c, highlightVisual));
+                } else if (piece === 'k' || piece === 'K') {
+                    allMoves = allMoves.concat(showKingMoves(r, c, highlightVisual));
+                } else if (piece === 'P') {
+                    allMoves = allMoves.concat(showWPawnMoves(r, c, highlightVisual));
+                } else if (piece === 'p') {
+                    allMoves = allMoves.concat(showBPawnMoves(r, c, highlightVisual));
+                }
+            }
+        }
+    }
+    return allMoves;
+}
+
+function isKingInCheck(color) {
+    let kingRow = -1;
+    let kingCol = -1;
+
+    const kingLetter = (color === 'white') ? 'K' : 'k';
+
+    for(let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if(initialBoard[r][c] === kingLetter) {
+                kingCol = c;
+                kingRow = r;
+                break;
+            }
+        }
+    }
+
+    const opponentColor = (color === 'white') ? 'black' : 'white';
+    const opponentMoves = getAllValidMoves(opponentColor, false);
+
+    for (let i = 0; i < opponentMoves.length; i++) {
+        const move = opponentMoves[i];
+        if (move.toRow === kingRow && move.toCol === kingCol) {
+            return true; // The King is under attack!
+        }
+    }
+
+    return false; // The King is safe!
+}
+
+function filterLegalMoves(pseudoLegalMoves, color) {
+    let strictlyLegalMoves = [];
+
+    // Loop through every single move the piece wants to make
+    pseudoLegalMoves.forEach(move => {
+        
+        // 1. Save whatever piece is currently sitting on the target square 
+        // (so we can put it back later if it was an enemy we temporarily captured!)
+        const originalTargetPiece = initialBoard[move.toRow][move.toCol];
+
+        // ==========================================
+        // 2. MAKE THE FAKE MOVE (Time travel forward)
+        // ==========================================
+        // CHALLENGE A: Write the array logic here!
+        // You need to place 'move.piece' at [move.toRow][move.toCol],
+        // and set the [move.fromRow][move.fromCol] to null.
+        initialBoard[move.toRow][move.toCol] = move.piece;
+        initialBoard[move.fromRow][move.fromCol] = null;
+        
+        
+
+        // 3. Look around: Is our King safe in this reality?
+        const isSafe = !isKingInCheck(color); // Notice the '!' - it means "NOT in check"
+
+        // ==========================================
+        // 4. UNDO THE FAKE MOVE (Time travel backward)
+        // ==========================================
+        // CHALLENGE B: Write the array logic here!
+        // You need to put 'move.piece' back at [move.fromRow][move.fromCol],
+        // and put 'originalTargetPiece' back at [move.toRow][move.toCol].
+        initialBoard[move.fromRow][move.fromCol] = move.piece;
+        initialBoard[move.toRow][move.toCol] = originalTargetPiece;
+        
+
+        // 5. The Verdict
+        if (isSafe) {
+            strictlyLegalMoves.push(move);
+        }
+    });
+
+    return strictlyLegalMoves;
+}
+
+function updateCheckHighlight() {
+    const oldcheck = document.querySelectorAll('.check');
+    oldcheck.forEach(square => {
+        square.classList.remove('check');
+    });
+
+    if(isKingInCheck(currentTurn)) {
+        kingCol = -1;
+        kingRow = -1;
+        const kingLetter = (currentTurn === 'white') ? 'K' : 'k';
+
+        for(let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if(initialBoard[r][c] === kingLetter) {
+                    kingCol = c;
+                    kingRow = r;
+                    break;
+                }
+            }
+        }
+
+        const kingSquare = document.querySelector(`[data-row="${kingRow}"][data-col="${kingCol}"]`);
+        kingSquare.classList.add('check');
+    }
 }

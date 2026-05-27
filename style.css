@@ -113,3 +113,9 @@ body {
     outline: 2px dashed rgba(0, 212, 255, 0.4);            /* Subdued dashed border */
     outline-offset: -4px;                                  /* Pushes the dash inside the square */
 }
+
+.check {
+    background-color: rgba(255, 44, 44, 0.15) !important; /* Soft futuristic cyan */
+    outline: 2px dashed rgba(255, 44, 44, 0.4);            /* Subdued dashed border */
+    outline-offset: -4px;                                  /* Pushes the dash inside the square */
+}
