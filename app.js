@@ -104,7 +104,8 @@ function handleSquareClick(event) {
         }
 
         updateCheckHighlight();
-        
+        checkForCheckmate();
+
         return; // Stops the function completely so we don't accidentally re-select this square!
     }
 
@@ -131,7 +132,46 @@ function handleSquareClick(event) {
 
     console.log(`You selected a piece: ${piece}. Calculating moves...`);
 
+    const clickedColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
     let rawMoves = [];
+
+    // If it doesn't match the current turn, instantly stop everything!
+    if (clickedColor !== currentTurn) {
+        console.log(`Viewing opponent's ${piece} moves...`);
+        
+        let opponentRawMoves = [];
+
+        // 1. Gather the moves QUIETLY (false)
+        if (piece === 'r' || piece === 'R') {
+            opponentRawMoves = showRookMoves(row, col, false);
+        } else if (piece === 'n' || piece === 'N') {
+            opponentRawMoves = showKnightMoves(row, col, false);
+        } else if (piece === 'b' || piece === 'B') {
+            opponentRawMoves = showBishopMoves(row, col, false);
+        } else if (piece === 'q' || piece === 'Q') {
+            opponentRawMoves = showQueenMoves(row, col, false);
+        } else if (piece === 'k' || piece === 'K') {
+            opponentRawMoves = showKingMoves(row, col, false);
+        } else if (piece === 'P') {
+            opponentRawMoves = showWPawnMoves(row, col, false);
+        } else if (piece === 'p') {
+            opponentRawMoves = showBPawnMoves(row, col, false);
+        }
+
+        // 2. Filter them using the OPPONENT'S color
+        const opponentSafeMoves = filterLegalMoves(opponentRawMoves, clickedColor);
+
+        // 3. Highlight only the strictly legal ones
+        opponentSafeMoves.forEach(move => {
+            const viewSquare = document.querySelector(`[data-row="${move.toRow}"][data-col="${move.toCol}"]`);
+            if(viewSquare) viewSquare.classList.add('possible-move');
+        });
+
+        // 4. Deselect the piece so we can't accidentally move it!
+        selectedSquare.classList.remove('selected');
+        selectedSquare = null;
+        return;
+    }
 
     if (piece === 'r' || piece === 'R') {
         rawMoves = showRookMoves(row, col, false);
@@ -611,8 +651,8 @@ function updateCheckHighlight() {
     });
 
     if(isKingInCheck(currentTurn)) {
-        kingCol = -1;
-        kingRow = -1;
+        let kingCol = -1;
+        let kingRow = -1;
         const kingLetter = (currentTurn === 'white') ? 'K' : 'k';
 
         for(let r = 0; r < 8; r++) {
@@ -627,5 +667,19 @@ function updateCheckHighlight() {
 
         const kingSquare = document.querySelector(`[data-row="${kingRow}"][data-col="${kingCol}"]`);
         kingSquare.classList.add('check');
+    }
+}
+
+function checkForCheckmate() {
+    const legalMoves = getAllValidMoves(currentTurn, false);
+
+    const filteredMoves = filterLegalMoves(legalMoves, currentTurn);
+
+    if (filteredMoves.length === 0) {
+        if(isKingInCheck(currentTurn)) {
+            console.log(`Checkmate! ${currentTurn === 'white' ? 'Black' : 'White'} wins!`);
+        } else {
+            console.log("Stalemate! It's a draw!");
+        }
     }
 }
