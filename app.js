@@ -4,6 +4,14 @@ let selectedSquare = null;
 // For Turn order
 let currentTurn = 'white';
 let playerColor = null;
+const castlingRights = {
+    whiteKingMoved: false,
+    whiteRookLeftMoved: false,
+    whiteRookRightMoved: false,
+    blackKingMoved: false,
+    blackRookLeftMoved: false,
+    blackRookRightMoved: false,
+};
 
 // Initialize the chess board
 const initialBoard = [
@@ -72,6 +80,31 @@ function handleSquareClick(event) {
         const oldCol = parseInt(selectedSquare.dataset.col);
         const movingPiece = selectedSquare.textContent;
 
+        if(movingPiece === 'K' || movingPiece === 'k') {
+            if(Math.abs(col - oldCol) === 2) {
+                const rookPiece = (currentTurn === 'white') ? 'R' : 'r';
+                if (col === 6) {
+                    initialBoard[row][5] = rookPiece
+                    initialBoard[row][7] = null;
+
+                    const oldRookSquare = document.querySelector(`[data-row="${row}"][data-col="7"]`);
+                    const newRookSquare = document.querySelector(`[data-row="${row}"][data-col="5"]`);
+                    
+                    oldRookSquare.textContent = '';
+                    newRookSquare.textContent = rookPiece;
+                } else if (col === 2) {
+                    initialBoard[row][3] = rookPiece
+                    initialBoard[row][0] = null;
+
+                    const oldRookSquare = document.querySelector(`[data-row="${row}"][data-col="0"]`);
+                    const newRookSquare = document.querySelector(`[data-row="${row}"][data-col="3"]`);
+
+                    oldRookSquare.textContent = '';
+                    newRookSquare.textContent = rookPiece;
+                }
+            }
+        }
+
         // Updates the board array (memory)
         initialBoard[row][col] = movingPiece;
         initialBoard[oldRow][oldCol] = null;
@@ -80,6 +113,23 @@ function handleSquareClick(event) {
         square.textContent = movingPiece;
         selectedSquare.textContent = '';
 
+        if(movingPiece === 'K') {
+            castlingRights.whiteKingMoved = true;
+        } else if (movingPiece === 'k') {
+            castlingRights.blackKingMoved = true;
+        } else if (movingPiece === 'R') {
+            if (oldRow === 7 && oldCol === 0) {
+                castlingRights.whiteRookLeftMoved = true;
+            } else if (oldRow === 7 && oldCol === 7) {
+                castlingRights.whiteRookRightMoved = true;
+            }
+        } else if (movingPiece === 'r') {
+            if (oldRow === 0 && oldCol === 0) {
+                castlingRights.blackRookLeftMoved = true;
+            } else if (oldRow === 0 && oldCol === 7) {
+                castlingRights.blackRookRightMoved = true;
+            }
+        }
         // Cleaning up highlights
         selectedSquare.classList.remove('selected');
         selectedSquare = null;
@@ -151,7 +201,7 @@ function handleSquareClick(event) {
         } else if (piece === 'q' || piece === 'Q') {
             opponentRawMoves = showQueenMoves(row, col, false);
         } else if (piece === 'k' || piece === 'K') {
-            opponentRawMoves = showKingMoves(row, col, false);
+            opponentRawMoves = showKingMoves(row, col, false, true);
         } else if (piece === 'P') {
             opponentRawMoves = showWPawnMoves(row, col, false);
         } else if (piece === 'p') {
@@ -380,7 +430,7 @@ function showQueenMoves(row, col, highlightVisual = false) {
     return bishopMoves.concat(rookMoves);
 }
 
-function showKingMoves(row, col, highlightVisual = false) {
+function showKingMoves(row, col, highlightVisual = false, checkCastling = true) {
     let moves = [];
 
     for (let r = row - 1; r <= row + 1; r++) {
@@ -398,6 +448,68 @@ function showKingMoves(row, col, highlightVisual = false) {
         }
     }
 
+    const piece = initialBoard[row][col];
+
+    if(checkCastling) {
+        if(piece === "K") {
+            if(castlingRights.whiteKingMoved === false) {
+                if(!isKingInCheck('white')) {
+                    if(castlingRights.whiteRookLeftMoved === false) {
+                        if(initialBoard[7][1] === null && initialBoard[7][2] === null && initialBoard[7][3] === null) {
+                            const targetSquare = document.querySelector(`[data-row="7"][data-col="2"]`);
+                            
+                            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                            
+                            if (moveData) {
+                                moves.push(moveData);
+                            }
+                        }
+                    }
+                    if(castlingRights.whiteRookRightMoved === false) {
+                        if(initialBoard[7][6] === null && initialBoard[7][5] === null) {
+                            const targetSquare = document.querySelector(`[data-row="7"][data-col="6"]`);
+                            
+                            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                            
+                            if (moveData) {
+                                moves.push(moveData);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if(piece === "k") {
+            if(castlingRights.blackKingMoved === false) {
+                if(!isKingInCheck('black')) {
+                    if(castlingRights.blackRookLeftMoved === false) {
+                        if(initialBoard[0][1] === null && initialBoard[0][2] === null && initialBoard[0][3] === null) {
+                            const targetSquare = document.querySelector(`[data-row="0"][data-col="2"]`);
+                            
+                            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                            
+                            if (moveData) {
+                                moves.push(moveData);
+                            }
+                        }
+                    }
+                    if(castlingRights.blackRookRightMoved === false) {
+                        if(initialBoard[0][6] === null && initialBoard[0][5] === null) {
+                            const targetSquare = document.querySelector(`[data-row="0"][data-col="6"]`);
+                            
+                            const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+                            
+                            if (moveData) {
+                                moves.push(moveData);
+                            }
+                        }
+                    }
+                }
+                
+            }
+        }
+    }
+    
     return moves;
 }
 
@@ -540,7 +652,7 @@ function showKnightMoves(row, col, highlightVisual = false) {
     return moves;
 }
 
-function getAllValidMoves(color, highlightVisual = false) {
+function getAllValidMoves(color, highlightVisual = false, skipCastling = false) {
     let allMoves = [];
 
     for (let r = 0; r < 8; r++) {
@@ -560,7 +672,7 @@ function getAllValidMoves(color, highlightVisual = false) {
                 } else if (piece === 'q' || piece === 'Q') {
                     allMoves = allMoves.concat(showQueenMoves(r, c, highlightVisual));
                 } else if (piece === 'k' || piece === 'K') {
-                    allMoves = allMoves.concat(showKingMoves(r, c, highlightVisual));
+                    allMoves = allMoves.concat(showKingMoves(r, c, highlightVisual, !skipCastling));
                 } else if (piece === 'P') {
                     allMoves = allMoves.concat(showWPawnMoves(r, c, highlightVisual));
                 } else if (piece === 'p') {
@@ -589,7 +701,7 @@ function isKingInCheck(color) {
     }
 
     const opponentColor = (color === 'white') ? 'black' : 'white';
-    const opponentMoves = getAllValidMoves(opponentColor, false);
+    const opponentMoves = getAllValidMoves(opponentColor, false, true);
 
     for (let i = 0; i < opponentMoves.length; i++) {
         const move = opponentMoves[i];
