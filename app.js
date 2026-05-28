@@ -672,14 +672,27 @@ function updateCheckHighlight() {
 
 function checkForCheckmate() {
     const legalMoves = getAllValidMoves(currentTurn, false);
-
     const filteredMoves = filterLegalMoves(legalMoves, currentTurn);
 
     if (filteredMoves.length === 0) {
+        // Grab your new HTML elements
+        const modal = document.getElementById('game-over-modal');
+        const winnerText = document.getElementById('winner-text');
+
         if(isKingInCheck(currentTurn)) {
-            console.log(`Checkmate! ${currentTurn === 'white' ? 'Black' : 'White'} wins!`);
+            // Update the text to say who won
+            const winningTeam = currentTurn === 'white' ? 'Black' : 'White';
+            winnerText.textContent = `Checkmate! ${winningTeam} wins!`;
         } else {
-            console.log("Stalemate! It's a draw!");
+            // Or declare a draw
+            winnerText.textContent = "Stalemate! It's a draw!";
         }
+        
+        // Remove the 'hidden' class to make the overlay appear!
+        modal.classList.remove('hidden');
     }
+}
+
+function restartGame() {
+    location.reload()
 }
