@@ -1,9 +1,13 @@
 // To show that no square is currently selected by default
 let selectedSquare = null;
-
+// For EnPassant
+let enPassantTarget = null;
 // For Turn order
 let currentTurn = 'white';
+// Keeping track of Player Color
 let playerColor = null;
+
+// Castle Memory
 const castlingRights = {
     whiteKingMoved: false,
     whiteRookLeftMoved: false,
@@ -43,6 +47,7 @@ for (let i = 0; i < 8; i++) {
     }
 }
 
+// After Start Menu Button is pressed hide start menu and show chess board
 function selectPlayerColor(isWhite) {
     document.getElementById('start-menu').style.display = 'none';
     document.getElementById('chessboard').style.display = 'grid';
@@ -55,12 +60,13 @@ function selectPlayerColor(isWhite) {
     }
 }
 
-// Reads when a square is clicked and then set the selected square and add the 'selected' class
+// Reads when a square is clicked
 function handleSquareClick(event) {
     const square = event.currentTarget;
     const row = parseInt(square.dataset.row); 
     const col = parseInt(square.dataset.col);
 
+    // For Debugging to see whos turn it is
     if (currentTurn === 'white') {
         console.log("White's turn!");
     } else if (currentTurn !== 'white') {
@@ -69,17 +75,22 @@ function handleSquareClick(event) {
 
     // Move execution
     if (selectedSquare !== null && square.classList.contains('possible-move')) {
+        // Gets selected pieces info
         const piece = selectedSquare.textContent;
         const pieceColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
+        // Makes sure you can't move an opponents piece
         if (pieceColor !== currentTurn) {
             console.log("You cannot move your opponent's piece!");
             return;
         } 
 
+        // Saves old selected pieces row and col info
         const oldRow = parseInt(selectedSquare.dataset.row);
         const oldCol = parseInt(selectedSquare.dataset.col);
+        // Get the square for the new selected square
         const movingPiece = selectedSquare.textContent;
 
+        // Moves the Rook if there is a castle
         if(movingPiece === 'K' || movingPiece === 'k') {
             if(Math.abs(col - oldCol) === 2) {
                 const rookPiece = (currentTurn === 'white') ? 'R' : 'r';
@@ -105,6 +116,19 @@ function handleSquareClick(event) {
             }
         }
 
+        // EnPassant Capture
+        if (movingPiece === 'P' || movingPiece === 'p') {
+            if (col !== oldCol && initialBoard[row][col] === null) {
+                const enemyPawnRow = enPassantTarget.enPassantRow;
+                const enemyPawnCol = enPassantTarget.enPassantCol;
+                const enemyPawn = document.querySelector(`[data-row="${enemyPawnRow}"][data-col="${enemyPawnCol}"]`);
+
+                initialBoard[enemyPawnRow][enemyPawnCol] = null;
+                enemyPawn.textContent = '';
+            }
+        }
+        enPassantTarget = null;
+
         // Updates the board array (memory)
         initialBoard[row][col] = movingPiece;
         initialBoard[oldRow][oldCol] = null;
@@ -113,6 +137,7 @@ function handleSquareClick(event) {
         square.textContent = movingPiece;
         selectedSquare.textContent = '';
 
+        // For castling if a rook or king moved
         if(movingPiece === 'K') {
             castlingRights.whiteKingMoved = true;
         } else if (movingPiece === 'k') {
@@ -130,6 +155,7 @@ function handleSquareClick(event) {
                 castlingRights.blackRookRightMoved = true;
             }
         }
+
         // Cleaning up highlights
         selectedSquare.classList.remove('selected');
         selectedSquare = null;
@@ -146,6 +172,18 @@ function handleSquareClick(event) {
             console.log("Black Pawn got a Promotion")
         }
 
+        // For En Passant
+        if(movingPiece === 'P' || movingPiece === 'p') {
+            if(Math.abs(row - oldRow) === 2) {
+                enPassantTarget = {
+                    enPassantRow: row,
+                    enPassantCol: col
+                }
+            }
+
+        }
+
+        // Changes turn order
         console.log("Move executed successfully!");
         if (currentTurn === 'white') {
             currentTurn = 'black';
@@ -153,27 +191,32 @@ function handleSquareClick(event) {
             currentTurn = 'white';
         }
 
+        // Checks for Checkmate and updates any check highlighting
         updateCheckHighlight();
         checkForCheckmate();
 
-        return; // Stops the function completely so we don't accidentally re-select this square!
+        return;
     }
 
     // If Selected Square is not a possible move
     const oldMoves = document.querySelectorAll('.possible-move');
 
+    // Removes the previous selected square styling
     if(selectedSquare != null) {
         selectedSquare.classList.remove('selected');
     }
 
+    // Removes all possible move styling on the board
     oldMoves.forEach(square => {
         square.classList.remove('possible-move');
     });
 
+    // Adds selected square styling
     selectedSquare = square;
     selectedSquare.classList.add('selected');
     console.log(`Square clicked: row ${row}, col ${col}`);
 
+    // Stop the program from progressing if empty square is selected
     const piece = selectedSquare.textContent;
     if (piece === '') {
         console.log("You selected an empty square.");
@@ -182,16 +225,17 @@ function handleSquareClick(event) {
 
     console.log(`You selected a piece: ${piece}. Calculating moves...`);
 
+    // Checks to see what color selected piece is
     const clickedColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
     let rawMoves = [];
 
-    // If it doesn't match the current turn, instantly stop everything!
+    // If the piece isn't equal to the current turn you're only selecting to see their moves
     if (clickedColor !== currentTurn) {
         console.log(`Viewing opponent's ${piece} moves...`);
         
         let opponentRawMoves = [];
 
-        // 1. Gather the moves QUIETLY (false)
+        // Gathers all possible moves
         if (piece === 'r' || piece === 'R') {
             opponentRawMoves = showRookMoves(row, col, false);
         } else if (piece === 'n' || piece === 'N') {
@@ -208,21 +252,22 @@ function handleSquareClick(event) {
             opponentRawMoves = showBPawnMoves(row, col, false);
         }
 
-        // 2. Filter them using the OPPONENT'S color
+        // Filter thru the moves to only show moves that are valid
         const opponentSafeMoves = filterLegalMoves(opponentRawMoves, clickedColor);
 
-        // 3. Highlight only the strictly legal ones
+        // Highlight the legal moves
         opponentSafeMoves.forEach(move => {
             const viewSquare = document.querySelector(`[data-row="${move.toRow}"][data-col="${move.toCol}"]`);
             if(viewSquare) viewSquare.classList.add('possible-move');
         });
 
-        // 4. Deselect the piece so we can't accidentally move it!
+        // Deselect the piece so we don't move it
         selectedSquare.classList.remove('selected');
         selectedSquare = null;
         return;
     }
 
+    // Gathers what moves the piece has
     if (piece === 'r' || piece === 'R') {
         rawMoves = showRookMoves(row, col, false);
     } else if (piece === 'n' || piece === 'N') {
@@ -239,6 +284,7 @@ function handleSquareClick(event) {
         rawMoves = showBPawnMoves(row, col, false);
     }
 
+    // Filters to make sure no illegal moves are made
     const safe = filterLegalMoves(rawMoves, currentTurn);
     safe.forEach(move => {
         const safe = document.querySelector(`[data-row="${move.toRow}"][data-col="${move.toCol}"]`);
@@ -250,11 +296,11 @@ function handleSquareClick(event) {
 document.addEventListener('click', function(event) {
     if (!event.target.classList.contains('square')) {
         if (selectedSquare !== null) {
-            // 1. Clear the main selection highlight
+            // Clears selected stlying
             selectedSquare.classList.remove('selected');
             selectedSquare = null;
             
-            // 2. Clear all the ghost move highlights too!
+            // Clears all possible move styling
             const oldMoves = document.querySelectorAll('.possible-move');
             oldMoves.forEach(square => {
                 square.classList.remove('possible-move');
@@ -291,6 +337,7 @@ function addPossibleMoves(startRow, startCol, targetSquare, highlightVisual = fa
     return null;
 }
 
+// Checks if the pieces are the same color
 function isAlly(currentPiece, targetPiece) {
     if (targetPiece === '') return false;
 
@@ -300,60 +347,56 @@ function isAlly(currentPiece, targetPiece) {
 }
 
 // Potential Moves for Pieces
+// Moves for Rook
 function showRookMoves(row, col, highlightVisual = false) {
     let moves = [];
 
-    // 1. Scan Right
+    // Scan Right
     for (let c = col + 1; c < 8; c++) {
         const targetSquare = document.querySelector(`[data-row="${row}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[row][c] !== null) break; 
     }
 
-    // 2. Scan Left
+    // Scans Left
     for (let c = col - 1; c >= 0; c--) {
         const targetSquare = document.querySelector(`[data-row="${row}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[row][c] !== null) break; 
     }
 
-    // 3. Scan Down
+    // Scans Downward
     for (let r = row + 1; r < 8; r++) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${col}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData); 
         }
         
         if (initialBoard[r][col] !== null) break; 
     }
 
-    // 4. Scan Up
-    
+    // Scans Upward
     for (let r = row - 1; r >= 0; r--) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${col}"]`);        
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[r][col] !== null) break; 
@@ -361,61 +404,57 @@ function showRookMoves(row, col, highlightVisual = false) {
     
     return moves;
 }
-
+// Moves for Bishop
 function showBishopMoves(row, col, highlightVisual = false) {
     let moves = [];
-    // 1. Scan Down-Right
+    // Scans Down-Right
     for (let r = row + 1, c = col + 1; c < 8 && r < 8; c++, r++) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[r][c] !== null) break; 
     }
 
-    // 2. Scan Down-Left
+    // Scans Down-Left
     for (let r = row + 1, c = col - 1; c >= 0 && r < 8; c--, r++) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[r][c] !== null) break;  
     }
 
-    // 3. Scan Up-Right
+    // Scans Up-Right
     for (let r = row - 1, c = col + 1; c < 8 && r >= 0; c++, r--) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[r][c] !== null) break; 
         
     }
 
-    // 4. Scan Up-Left
+    // Scans Up-Left
     for (let r = row - 1, c = col - 1; c >= 0 && r >= 0; c--, r--) {
         const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }
         
         if (initialBoard[r][c] !== null) break; 
@@ -423,26 +462,27 @@ function showBishopMoves(row, col, highlightVisual = false) {
 
     return moves;
 }
-
+// Moves for Queen
 function showQueenMoves(row, col, highlightVisual = false) {
+    // Combines Bishop and Rook move pools
     const bishopMoves = showBishopMoves(row, col, highlightVisual);
     const rookMoves = showRookMoves(row, col, highlightVisual);
     return bishopMoves.concat(rookMoves);
 }
-
+// Moves for King
 function showKingMoves(row, col, highlightVisual = false, checkCastling = true) {
     let moves = [];
 
+    // Scans around it since it can move in any direction
     for (let r = row - 1; r <= row + 1; r++) {
         for (let c = col - 1; c <= col + 1; c++) {
             if (r >= 0 && r < 8 && c >= 0 && c < 8 && (r !== row || c !== col)) {
                 const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
         
-                // Pass our new parameters into the helper
                 const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
                 
                 if (moveData) {
-                    moves.push(moveData); // Save the data object!
+                    moves.push(moveData);
                 }
             }
         }
@@ -450,6 +490,7 @@ function showKingMoves(row, col, highlightVisual = false, checkCastling = true) 
 
     const piece = initialBoard[row][col];
 
+    // Checks if Castling is possible
     if(checkCastling) {
         if(piece === "K") {
             if(castlingRights.whiteKingMoved === false) {
@@ -512,116 +553,140 @@ function showKingMoves(row, col, highlightVisual = false, checkCastling = true) 
     
     return moves;
 }
-
+// Moves for White Pawn
 function showWPawnMoves(row, col, highlightVisual = false) {
     let moves = [];
 
-    // Rule 1 & 2: Moving 1 square forward (must be empty!)
+    // Moving 1 or 2 Steps forward
     const oneStepRow = row - 1;
     if (oneStepRow >= 0 && initialBoard[oneStepRow][col] === null) {
         const targetSquare = document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`);
 
-        // Pass our new parameters into the helper
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }        
 
-        // Rule 1 Continued: Double step from starting row (row 6)
-        // We only check this if the first step was also empty!
+        // 2 Steps forward
         const twoStepRow = row - 2;
         if (row === 6 && initialBoard[twoStepRow][col] === null) {
             const targetSquare = document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`);
-            // Pass our new parameters into the helper
             const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
             
             if (moveData) {
-                moves.push(moveData); // Save the data object!
+                moves.push(moveData);
             }  
         }
     }
 
-    // Rule 3: Diagonal Captures (Left and Right)
-    // A White pawn captures on row - 1, and columns col - 1 or col + 1
+    // Diagonal Capture
     const targetRow = row - 1;
     const diagonalCols = [col - 1, col + 1];
 
     diagonalCols.forEach(targetCol => {
         if (targetRow >= 0 && targetCol >= 0 && targetCol < 8) {
             const pieceOnSquare = initialBoard[targetRow][targetCol];
-            // If there is a piece here, and it's lowercase (Black's piece), we can capture it!
             if (pieceOnSquare !== null && pieceOnSquare === pieceOnSquare.toLowerCase()) {
                 const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
 
-                // Pass our new parameters into the helper
                 const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
                 
                 if (moveData) {
-                    moves.push(moveData); // Save the data object!
+                    moves.push(moveData);
                 }  
             }
         }
     });
 
+
+    // EnPassant
+    if(enPassantTarget !== null) {
+        if(row === 3) {
+            if(enPassantTarget.enPassantRow === row) {
+                if(enPassantTarget.enPassantCol === col + 1 || enPassantTarget.enPassantCol === col - 1) {
+                    const targetSquare = document.querySelector(`[data-row="${row - 1}"][data-col="${enPassantTarget.enPassantCol}"]`);
+                    const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+
+                    if (moveData) {
+                        moves.push(moveData);
+                    }  
+                }
+            }
+        }
+    }
+
     return moves;
 }
-
+// Moves for Black Pawn
 function showBPawnMoves(row, col, highlightVisual = false) {
 
     let moves = [];
 
-    // Rule 1 & 2: Moving 1 square forward (must be empty!)
+    // Moving 1 or 2 Steps forward
     const oneStepRow = row + 1;
     if (oneStepRow >= 0 && initialBoard[oneStepRow][col] === null) {
         const targetSquare = document.querySelector(`[data-row="${oneStepRow}"][data-col="${col}"]`);
 
-        // Pass our new parameters into the helper
+
         const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
         
         if (moveData) {
-            moves.push(moveData); // Save the data object!
+            moves.push(moveData);
         }   
         
-        // Rule 1 Continued: Double step from starting row (row 6)
-        // We only check this if the first step was also empty!
+        // 2 Steps forward
         const twoStepRow = row + 2;
         if (row === 1 && initialBoard[twoStepRow][col] === null) {
             const targetSquare = document.querySelector(`[data-row="${twoStepRow}"][data-col="${col}"]`);
-            // Pass our new parameters into the helper
+           
             const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
             
             if (moveData) {
-                moves.push(moveData); // Save the data object!
+                moves.push(moveData);
             }  
         }
     }
 
-    // Rule 3: Diagonal Captures (Left and Right)
-    // A Black pawn captures on row + 1, and columns col - 1 or col + 1
+    // Diagonal Capture
     const targetRow = row + 1;
     const diagonalCols = [col + 1, col - 1];
 
     diagonalCols.forEach(targetCol => {
         if (targetRow >= 0 && targetCol >= 0 && targetCol < 8) {
             const pieceOnSquare = initialBoard[targetRow][targetCol];
-            // If there is a piece here, and it's lowercase (Black's piece), we can capture it!
             if (pieceOnSquare !== null && pieceOnSquare === pieceOnSquare.toUpperCase()) {
                 const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
 
-                // Pass our new parameters into the helper
+
                 const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
                 
                 if (moveData) {
-                    moves.push(moveData); // Save the data object!
+                    moves.push(moveData); 
                 }  
             }
         }
     });
 
+    // EnPassant
+    if(enPassantTarget !== null) {
+        if(row === 4) {
+            if(enPassantTarget.enPassantRow === row) {
+                if(enPassantTarget.enPassantCol === col + 1 || enPassantTarget.enPassantCol === col - 1) {
+                    const targetSquare = document.querySelector(`[data-row="${row + 1}"][data-col="${enPassantTarget.enPassantCol}"]`);
+                    const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
+
+                    if (moveData) {
+                        moves.push(moveData);
+                    }  
+                }
+            }
+        }
+    }
+
     return moves;
 }
-
+// Moves for Knight
 function showKnightMoves(row, col, highlightVisual = false) {
 
     let moves = [];
@@ -632,19 +697,19 @@ function showKnightMoves(row, col, highlightVisual = false) {
         [-1, 2], [1, 2], [-1, -2], [1, -2]
     ];
 
+    // Loops thru all the patterns
     knightPatterns.forEach(move => {
         const targetRow = row + move[0];
         const targetCol = col + move[1];
 
-        // CRITICAL CHECK: Make sure the Knight isn't trying to leap off the 8x8 grid!
+        // Makes sure Knight doesn't leave 8x8 grid
         if (targetRow >= 0 && targetRow < 8 && targetCol >= 0 && targetCol < 8) {
             const targetSquare = document.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
 
-            // Pass our new parameters into the helper
             const moveData = addPossibleMoves(row, col, targetSquare, highlightVisual);
             
             if (moveData) {
-                moves.push(moveData); // Save the data object!
+                moves.push(moveData);
             }   
         }
     });
@@ -652,9 +717,11 @@ function showKnightMoves(row, col, highlightVisual = false) {
     return moves;
 }
 
+// Gets all valid moves from each piece
 function getAllValidMoves(color, highlightVisual = false, skipCastling = false) {
     let allMoves = [];
 
+    // Loops thru the whole board
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const piece = initialBoard[r][c];
@@ -662,6 +729,7 @@ function getAllValidMoves(color, highlightVisual = false, skipCastling = false) 
 
             const pieceColor = (piece === piece.toUpperCase()) ? 'white' : 'black';
 
+            // if a piece is found get the moves and add it to allMoves but dont highlight the moves on the board
             if (pieceColor === color) {
                 if (piece === 'r' || piece === 'R') {
                     allMoves = allMoves.concat(showRookMoves(r, c, highlightVisual));
@@ -684,6 +752,7 @@ function getAllValidMoves(color, highlightVisual = false, skipCastling = false) 
     return allMoves;
 }
 
+// Checks if king is in check
 function isKingInCheck(color) {
     let kingRow = -1;
     let kingCol = -1;
@@ -713,41 +782,30 @@ function isKingInCheck(color) {
     return false; // The King is safe!
 }
 
+// Filters if a move is legal (Example: A king moving into Check or Moving your own piece to put your king in check)
 function filterLegalMoves(pseudoLegalMoves, color) {
     let strictlyLegalMoves = [];
 
     // Loop through every single move the piece wants to make
     pseudoLegalMoves.forEach(move => {
         
-        // 1. Save whatever piece is currently sitting on the target square 
-        // (so we can put it back later if it was an enemy we temporarily captured!)
+        // Save status for moving forward
         const originalTargetPiece = initialBoard[move.toRow][move.toCol];
 
-        // ==========================================
-        // 2. MAKE THE FAKE MOVE (Time travel forward)
-        // ==========================================
-        // CHALLENGE A: Write the array logic here!
-        // You need to place 'move.piece' at [move.toRow][move.toCol],
-        // and set the [move.fromRow][move.fromCol] to null.
+        // Simulate moving forward
         initialBoard[move.toRow][move.toCol] = move.piece;
         initialBoard[move.fromRow][move.fromCol] = null;
         
         
+        // Checks if king is Safe
+        const isSafe = !isKingInCheck(color);
 
-        // 3. Look around: Is our King safe in this reality?
-        const isSafe = !isKingInCheck(color); // Notice the '!' - it means "NOT in check"
-
-        // ==========================================
-        // 4. UNDO THE FAKE MOVE (Time travel backward)
-        // ==========================================
-        // CHALLENGE B: Write the array logic here!
-        // You need to put 'move.piece' back at [move.fromRow][move.fromCol],
-        // and put 'originalTargetPiece' back at [move.toRow][move.toCol].
+        // Reverses the time travek forward
         initialBoard[move.fromRow][move.fromCol] = move.piece;
         initialBoard[move.toRow][move.toCol] = originalTargetPiece;
         
 
-        // 5. The Verdict
+        // Checks to see if its safe
         if (isSafe) {
             strictlyLegalMoves.push(move);
         }
@@ -756,6 +814,7 @@ function filterLegalMoves(pseudoLegalMoves, color) {
     return strictlyLegalMoves;
 }
 
+// Updates if the King is in check styling
 function updateCheckHighlight() {
     const oldcheck = document.querySelectorAll('.check');
     oldcheck.forEach(square => {
@@ -782,6 +841,7 @@ function updateCheckHighlight() {
     }
 }
 
+// Checks for checkmate and if so end the game with a pop up
 function checkForCheckmate() {
     const legalMoves = getAllValidMoves(currentTurn, false);
     const filteredMoves = filterLegalMoves(legalMoves, currentTurn);
@@ -805,6 +865,7 @@ function checkForCheckmate() {
     }
 }
 
+// Refresh the page when Play Again button is pressed
 function restartGame() {
     location.reload()
 }
